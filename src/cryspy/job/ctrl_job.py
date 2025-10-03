@@ -234,8 +234,17 @@ class Ctrl_job:
             fwstat.write(f'{self.cstage + 1:<6}    # Stage\n')
             fwstat.write('submitted\n')
         with open('sublog', 'w') as logf:
-            subprocess.Popen([self.rin.jobcmd, self.rin.jobfile],
-                             stdout=logf, stderr=logf)
+            #added by KK
+            #====================================================#
+            if "oba" in self.rin.jobcmd:
+                subprocess.Popen(["qsub", "-g", "tga-oba-1", self.rin.jobfile],
+                                 stdout=logf, stderr=logf)
+            else:
+                subprocess.Popen([self.rin.jobcmd, self.rin.jobfile],
+                                 stdout=logf, stderr=logf)
+            #subprocess.Popen([self.rin.jobcmd, self.rin.jobfile],
+            #                 stdout=logf, stderr=logf)
+            #====================================================#
         os.chdir('../../')    # go back to ..
         # ---------- save status
         stat = io_stat.stat_read()
@@ -728,11 +737,29 @@ def submit_next_struc(rin, cid, work_path, wait=False):
     # ---------- submit
     with open('sublog', 'w') as logf:
         if not wait:
-            subprocess.Popen([rin.jobcmd, rin.jobfile],
-                             stdout=logf, stderr=logf)
+            #added by KK
+            #====================================================#
+            if "oba" in rin.jobcmd:
+                subprocess.Popen(["qsub", "-g", "tga-oba-1", rin.jobfile],
+                                 stdout=logf, stderr=logf)
+            else:
+                subprocess.Popen([rin.jobcmd, rin.jobfile],
+                                 stdout=logf, stderr=logf)
+            #subprocess.Popen([rin.jobcmd, rin.jobfile],
+            #                 stdout=logf, stderr=logf)
+            #====================================================#
         else:    # wait
-            subprocess.run([rin.jobcmd, rin.jobfile],
-                           stdout=logf, stderr=logf)
+            #added by KK
+            #====================================================#
+            if "oba" in rin.jobcmd:
+                subprocess.run(["qsub", "-g", "tga-oba-1", rin.jobfile],
+                                 stdout=logf, stderr=logf)
+            else:
+                subprocess.run([rin.jobcmd, rin.jobfile],
+                                 stdout=logf, stderr=logf)
+            #subprocess.run([rin.jobcmd, rin.jobfile],
+            #                 stdout=logf, stderr=logf)
+            #====================================================#
     # ---------- write stat_job
     with open('stat_job', 'w') as f:
         f.write(f'{cid:<6}    # Structure ID\n')

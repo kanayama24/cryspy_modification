@@ -34,6 +34,9 @@ class ReadInput:
     symprec: float = field(default=None)
     spgnum: str = field(default=None)    # ignore type hint here. 'all', tuple or 0
     use_find_wy: bool = field(default=None)
+    # ------ slab  #by KK 
+    ztop: float = field(default=None) # added by KK
+    dual_surface: bool = field(default=None) # added by KK
     # ------ EA-vc
     ll_nat: tuple = field(default=None)
     ul_nat: tuple = field(default=None)
@@ -231,8 +234,10 @@ class ReadInput:
             self.struc_mode = self.config.get('structure', 'struc_mode')
         except (configparser.NoOptionError, configparser.NoSectionError):
             self.struc_mode = 'crystal'
-        if self.struc_mode not in ['crystal', 'mol', 'mol_bs']:
-            raise ValueError('struc_mode must be crystal, mol, or  mol_bs')
+        #if self.struc_mode not in ['crystal', 'mol', 'mol_bs']: # by KK
+        if self.struc_mode not in ['crystal', 'mol', 'mol_bs', 'slab']: # by KK
+            #raise ValueError('struc_mode must be crystal, mol, or  mol_bs') # by KK
+            raise ValueError('struc_mode must be crystal, slab, mol, or  mol_bs') # by KK
         #if self.struc_mode not in ['crystal', 'mol', 'mol_bs', 'host']:
         #    raise ValueError('struc_mode must be crystal, mol, mol_bs, or host')
         if self.algo in ['EA', 'EA-vc'] and self.struc_mode in ['mol', 'mol_bs']:
@@ -328,6 +333,21 @@ class ReadInput:
         if self.use_find_wy:
             if not self.struc_mode == 'crystal':
                 raise ValueError('find_wy can be use if struc_mode is crystal')
+        #added by KK
+        #==========================================================================#
+        # ---------- ztop
+        try:
+            self.ztop = self.config.getfloat('structure', 'ztop')
+            if self.ztop <= 0.0:
+                raise ValueError('vol_factor must be positive')
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            self.ztop = 1.0
+        # ---------- dual_surface
+        try:
+            self.dual_surface = self.config.getboolean('structure', 'dual_surface')
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            self.dual_surface = False
+        #==========================================================================#
         # ---------- EA-vc
         if self.algo =='EA-vc':
             # ------ ll_nat, ul_nat

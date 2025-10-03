@@ -49,8 +49,26 @@ def gen_random(rin, nstruc, id_offset, comm, mpi_rank, mpi_size):
     else:
         cn_comb = None
 
-    # ---------- pyxtal
-    if not (rin.spgnum == 0 or rin.use_find_wy):
+    #added by KK
+    #=====================================================#
+    if rin.struc_mode in 'slab':
+        from .gen_struc_RS import gen_slab
+        init_struc_data = gen_slab.gen_slab_structure(
+            nstruc=nstruc_list[mpi_rank],
+            atype=rin.atype,
+            nat=rin.nat,
+            mindist=mindist,
+            z_top=rin.ztop,
+            dual_surface=rin.dual_surface,
+            symprec=rin.symprec,
+            id_offset=offset_list[mpi_rank],
+        )
+        struc_mol_id = {}
+        #=====================================================#
+
+        # ---------- pyxtal
+        #if not (rin.spgnum == 0 or rin.use_find_wy): #by KK
+    elif not (rin.spgnum == 0 or rin.use_find_wy): #by KK
         from .gen_struc_RS import gen_pyxtal
         # ------ crystal
         if rin.struc_mode == 'crystal':

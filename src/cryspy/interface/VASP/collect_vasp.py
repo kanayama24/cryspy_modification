@@ -51,16 +51,19 @@ def collect_vasp(cid, work_path, nat):
     energy = energy / sum(nat)    # eV/atom
 
     # ---------- magmom
-    outcar = Outcar(work_path + 'OUTCAR')
+    #outcar = Outcar(work_path + 'OUTCAR') #by KK
+    outcar = Outcar(work_path + 'OUTCAR-finish') #by KK
     magmom = outcar.total_mag
     if magmom is None:
         magmom = np.nan
 
     # ---------- collect CONTCAR
     try:
-        opt_struc = Structure.from_file(work_path + 'CONTCAR')
+        #opt_struc = Structure.from_file(work_path + 'CONTCAR') #by KK
+        opt_struc = Structure.from_file(work_path + 'POSCAR-finish') #by KK
     except Exception:
-        logger.error(f'    Structure ID {cid}, failed to parse CONTCAR')
+        #logger.error(f'    Structure ID {cid}, failed to parse CONTCAR') #by KK
+        logger.error(f'    Structure ID {cid}, failed to parse POSCAR-finish') #by KK
         opt_struc = None
         energy = np.nan
         magmom = np.nan

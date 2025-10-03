@@ -34,20 +34,26 @@ def next_stage_vasp(rin, stage, work_path, nat, kpt_data, cid):
         os.remove(work_path+'STOPCAR')
 
     # ---------- KPOINTS for the next stage using pymatgen
-    try:
-        structure = Structure.from_file(work_path+'POSCAR')
-    except ValueError:
-        skip_flag = True
-        kpt_data[cid].append(['skip'])
-        pkl_data.save_kpt(kpt_data)
-        out_kpts(kpt_data)
-        logger.info(f'    error in VASP,  skip structure {cid}')
-        return skip_flag, kpt_data
-    # kppvol[0]: <--> stage 1, kppvol[1] <--> stage2, ...
-    #   so (stage - 1): current stage, stage: next stage in kppvol
-    kpoints = Kpoints.automatic_density_by_vol(structure=structure,
-                                               kppvol=rin.kppvol[stage],
-                                               force_gamma=rin.force_gamma)
+    #modified by KK
+    #================================================#
+    if rin.struc_mode == "slab":
+        kpoints = Kpoints.from_file('./calc_in/KPOINTS')
+    else:
+        try:
+            structure = Structure.from_file(work_path+'POSCAR')
+        except ValueError:
+            skip_flag = True
+            kpt_data[cid].append(['skip'])
+            pkl_data.save_kpt(kpt_data)
+            out_kpts(kpt_data)
+            logger.info(f'    error in VASP,  skip structure {cid}')
+            return skip_flag, kpt_data
+        # kppvol[0]: <--> stage 1, kppvol[1] <--> stage2, ...
+        #   so (stage - 1): current stage, stage: next stage in kppvol
+            kpoints = Kpoints.automatic_density_by_vol(structure=structure,
+                                                       kppvol=rin.kppvol[stage],
+                                                       force_gamma=rin.force_gamma)
+    #================================================#
     kpoints.write_file(work_path+'KPOINTS')
 
     # ---------- kpt_data
@@ -92,9 +98,18 @@ def next_struc_vasp(rin, structure, cid, work_path, nat, kpt_data):
             f.write(line)
 
     # ---------- generate KPOINTS using pymatgen
-    kpoints = Kpoints.automatic_density_by_vol(structure=structure,
-                                               kppvol=rin.kppvol[0],
-                                               force_gamma=rin.force_gamma)
+    #modified by KK
+    #================================================#
+    if rin.struc_mode == "slab":
+        kpoints = Kpoints.from_file('./calc_in/KPOINTS')
+    else:
+        kpoints = Kpoints.automatic_density_by_vol(structure=structure,
+                                                   kppvol=rin.kppvol[0],
+                                                   force_gamma=rin.force_gamma)
+    #kpoints = Kpoints.automatic_density_by_vol(structure=structure,
+    #                                           kppvol=rin.kppvol[0],
+    #                                           force_gamma=rin.force_gamma)
+    #================================================#
     kpoints.write_file(work_path+'KPOINTS')
 
     # ---------- kpt_data
