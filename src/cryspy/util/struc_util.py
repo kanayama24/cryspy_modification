@@ -11,6 +11,7 @@ from pymatgen.core import Structure, Molecule
 from pymatgen.io.cif import CifWriter
 from pyxtal.database.collection import Collection
 from pyxtal.tolerance import Tol_matrix
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer #by KK
 
 # ---------- import later
 #from ..IO.pkl_data import load_cn_comb_data, save_cn_comb_data
@@ -583,3 +584,84 @@ def calc_cn_comb(ll_nat, ul_nat, charge, use_pkl=True):
 
     # ---------- return charge neutral combinations
     return cn_comb
+
+#================ added by KK ===================#
+def read_slab(r_rearr, dual_surface, atype): #initial procedure 
+    slab_init = Structure.from_file('./calc_in/POSCAR_SLAB')
+    for site in slab_init:
+        site.frac_coords = site.frac_coords % 1.0
+    lattice = slab_init.lattice
+    z_min = min([site.frac_coords[2] for site in slab_init.sites])
+    z_max = max([site.frac_coords[2] for site in slab_init.sites])
+    z_rearr = r_rearr / lattice.c
+
+    # ---- bulk slab (atomic layers without arrangement) 
+    if dual_surface:
+        slab_bulk = Structure(
+                lattice=lattice,
+                species=[site.species_string for site in slab_init.sites 
+                        if site.frac_coords[2]>z_min+z_rearr and site.frac_coords[2]<z_max-z_rearr],
+                coords=[site.frac_coords for site in slab_init.sites 
+                        if site.frac_coords[2]>z_min+z_rearr and site.frac_coords[2]<z_max-z_rearr],
+                coords_are_cartesian=False
+        )
+    else:
+        slab_bulk = Structure(
+                lattice=lattice,
+                species=[site.species_string for site in slab_init.sites 
+                        if site.frac_coords[2]<z_max-z_rearr],
+                coords=[site.frac_coords for site in slab_init.sites 
+                        if site.frac_coords[2]<z_max-z_rearr],
+                coords_are_cartesian=False
+        )
+    slab_rearr = Structure(
+            lattice=lattice,                                                                                                             
+            species=[site.species_string for site in slab_init.sites 
+                    if site.frac_coords[2]>z_max-z_rearr],                                         
+            coords=[site.frac_coords for site in slab_init.sites                                
+                    if site.frac_coords[2]>z_max-z_rearr],
+            coords_are_cartesian=False
+    )
+
+    return slab_init, slab_bulk, lattice, z_min, z_max
+
+
+# ---- bottom layer generation by symmetry operation
+def symmetric_bottom(struc, slab_bulk, symprec):
+
+    # 対称性情報の取得
+    analyzer = SpacegroupAnalyzer(slab_bulk, symprec=symprec)
+    dataset = analyzer.get_symmetry_dataset()
+    for rot, trans in zip(dataset.rotations, dataset.translations):
+        if np.allclose(rot[2], [0,0,-1]):
+            break
+    #print("symmop(trans):",trans)
+    #print("symmop(rot):")
+    #print(rot)
+    #print(len(struc.sites))
+
+    # 対照操作による新しい原子の追加
+    nsite_bulk = len(slab_bulk)
+    new_struc = struc.copy()
+    for i, site in enumerate(struc.sites):
+        if i >= nsite_bulk:
+            fpos = site.frac_coords
+            new_fpos = np.dot(rot,fpos) + trans
+            new_fpos = new_fpos % 1.0
+            new_struc.append(site.specie, new_fpos, coords_are_cartesian=False)
+    return new_struc
+
+
+def slab_site_properties(struc, z_fix_max=1, z_fix_min=0):
+    slab_properties = []
+    for site in struc.sites:
+        fpos = site.frac_coords
+        if fpos[2] > z_fix_max or fpos[2] < z_fix_min:
+            slab_properties.append(np.array([True,True,True]))
+        else:
+            slab_properties.append(np.array([False,False,False]))
+    struc.add_site_property('selective_dynamics', slab_properties)
+
+    return struc
+#==================================================#
+

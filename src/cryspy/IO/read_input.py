@@ -35,7 +35,9 @@ class ReadInput:
     spgnum: str = field(default=None)    # ignore type hint here. 'all', tuple or 0
     use_find_wy: bool = field(default=None)
     # ------ slab  #by KK 
-    ztop: float = field(default=None) # added by KK
+    r_relax: float = field(default=None) # 最表面層からどの距離までの原子層を構造緩和させるか[Å], added by KK
+    r_rearr: float = field(default=None) # 最表面層からどの距離までの原子層を再構成させるか。再構成層の原子数はnatで指定[Å], added by KK
+    r_above: float = field(default=None) # ランダムに原子を配置する際のz座標の上限（最表面層からの距離で指定）[Å], added by KK
     dual_surface: bool = field(default=None) # added by KK
     # ------ EA-vc
     ll_nat: tuple = field(default=None)
@@ -335,13 +337,27 @@ class ReadInput:
                 raise ValueError('find_wy can be use if struc_mode is crystal')
         #added by KK
         #==========================================================================#
-        # ---------- ztop
+        # ---------- r_relax
         try:
-            self.ztop = self.config.getfloat('structure', 'ztop')
-            if self.ztop <= 0.0:
-                raise ValueError('vol_factor must be positive')
+            self.r_relax = self.config.getfloat('structure', 'r_relax')
+            if self.r_relax <= 0.0:
+                raise ValueError('r_relax must be positive')
         except (configparser.NoOptionError, configparser.NoSectionError):
-            self.ztop = 1.0
+            self.r_relax = 5.0
+        # ---------- r_rearr
+        try:
+            self.r_rearr = self.config.getfloat('structure', 'r_rearr')
+            if self.r_rearr <= 0.0:
+                raise ValueError('r_rearr must be positive')
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            self.r_rearr = 1.0
+        # ---------- r_above
+        try:
+            self.r_above = self.config.getfloat('structure', 'r_above')
+            if self.r_above <= 0.0:
+                raise ValueError('r_above must be positive')
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            self.r_above = 1.0
         # ---------- dual_surface
         try:
             self.dual_surface = self.config.getboolean('structure', 'dual_surface')

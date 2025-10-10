@@ -4,6 +4,7 @@ import os
 
 from .gen_struc_EA.select_parents import SelectParents
 from .gen_struc_EA.crossover import gen_crossover
+from .gen_struc_EA.crossover_slab import gen_crossover_slab #by KK
 from .gen_struc_EA.permutation import gen_permutation
 from .gen_struc_EA.strain import gen_strain
 from .gen_struc_EA.addition import gen_addition
@@ -75,7 +76,27 @@ def child_gen(
 
     # ---------- Crossover
     if rin.n_crsov > 0:
-        if rin.struc_mode not in ['mol', 'mol_bs']:
+        #======================= added by KK ================================#
+        if rin.struc_mode in ['slab']:
+            co_children, co_parents, co_operation = gen_crossover_slab(
+                rin.atype,
+                rin.nat,
+                mindist,
+                struc_data,
+                sp,
+                rin.n_crsov,
+                id_start,
+                rin.symprec,
+                rin.nat_diff_tole,
+                rin.maxcnt_ea,
+                r_relax=rin.r_relax,
+                r_rearr=rin.r_rearr,
+                r_above=rin.r_above,
+                dual_surface=rin.dual_surface,
+            )
+        #if rin.struc_mode not in ['mol', 'mol_bs']:
+        #===============================================================#
+        elif rin.struc_mode not in ['mol', 'mol_bs']:
             co_children, co_parents, co_operation = gen_crossover(
                 rin.atype,
                 rin.nat,
@@ -107,7 +128,29 @@ def child_gen(
 
     # ---------- Permutation
     if rin.n_perm > 0:
-        if rin.struc_mode not in ['mol', 'mol_bs']:
+        #================== added by KK ============================#
+        if rin.struc_mode in ['slab']:
+            pm_children, pm_parents, pm_operation = gen_permutation(
+                rin.atype,
+                mindist,
+                struc_data,
+                sp,
+                rin.n_perm,
+                id_start,
+                rin.symprec,
+                rin.ntimes,
+                rin.maxcnt_ea,
+                struc_mol_id=None,
+                molecular=False,
+                slab=True,
+                r_relax=rin.r_relax,
+                r_rearr=rin.r_rearr,
+                r_above=rin.r_above,
+                dual_surface=rin.dual_surface,
+            )
+            #========================================================#
+        #if rin.struc_mode not in ['mol', 'mol_bs']:
+        elif rin.struc_mode not in ['mol', 'mol_bs']:
             pm_children, pm_parents, pm_operation = gen_permutation(
                 rin.atype,
                 mindist,
@@ -133,7 +176,8 @@ def child_gen(
 
     # ---------- Strain
     if rin.n_strain > 0:
-        if rin.struc_mode not in ['mol', 'mol_bs']:
+        #if rin.struc_mode not in ['mol', 'mol_bs']:
+        if rin.struc_mode not in ['mol', 'mol_bs', 'slab']: #by KK
             st_children, st_parents, st_operation = gen_strain(
                 rin.atype,
                 mindist,
@@ -149,7 +193,8 @@ def child_gen(
                 protect_mol_struc=True,
             )
         else:
-            logger.error('Strain is not implemented for mol or mol_bs')
+            #logger.error('Strain is not implemented for mol or mol_bs')
+            logger.error('Strain is not implemented for mol or mol_bs or slab') #by KK
             # st = Strain(mindist)
             # eagen.gen_strain(rin, st, struc_mol_id, protect_mol_struc=True)
         # ------ update

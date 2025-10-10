@@ -4,7 +4,13 @@ import numpy as np
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core import Structure
 
-from ...util.struc_util import sort_by_atype, check_distance, get_nat, remove_zero
+#=========== modified by KK ================#
+#from ...util.struc_util import sort_by_atype, check_distance, get_nat, remove_zero
+from ...util.struc_util import ( 
+        sort_by_atype, check_distance, get_nat, remove_zero,
+        read_slab, symmetric_bottom, slab_site_properties
+        )
+#===========================================#
 #from ...util.struc_util import cal_g, sort_by_atype_mol, find_site
 
 
@@ -23,6 +29,13 @@ def gen_permutation(
         maxcnt_ea=50,
         struc_mol_id=None,
         molecular=False,
+        #==== added by KK ===="
+        slab=False,
+        r_relax=5,
+        r_rearr=1,
+        r_above=1,
+        dual_surface=False,
+        #=====================#
     ):
     '''
 
@@ -76,7 +89,9 @@ def gen_permutation(
             #                                     self.sp.struc_data[pid_A],
             #                                     struc_mol_id[pid_A])
         else:
-            child = gen_child(atype, mindist, parent_A, ntimes, maxcnt_ea)
+            #child = gen_child(atype, mindist, parent_A, ntimes, maxcnt_ea) #by KK
+            child = gen_child(atype, mindist, parent_A, symprec, ntimes, maxcnt_ea,
+                    slab, r_relax, r_rearr, r_above, dual_surface) #by KK
         # ------ success
         if child is not None:
             children[cid] = child
@@ -100,7 +115,9 @@ def gen_permutation(
     return children, parents, operation
 
 
-def gen_child(atype, mindist, parent_A, ntimes=1, maxcnt_ea=50):
+#def gen_child(atype, mindist, parent_A, ntimes=1, maxcnt_ea=50):
+def gen_child(atype, mindist, parent_A, symprec, ntimes=1, maxcnt_ea=50, 
+                slab=False, r_relax=5, r_rearr=1, r_above=1, dual_surface=False): #by KK
     '''
 
         tuple may be replaced by list
@@ -127,10 +144,33 @@ def gen_child(atype, mindist, parent_A, ntimes=1, maxcnt_ea=50):
         while n > 0:
             # ------ prepare index for each atom type
             indx_each_type = []
-            for a in atype:
-                indx_each_type.append(
-                    [i for i, site in enumerate(child)
-                        if site.species_string == a])
+            #============== modified by KK ================================"
+            if slab:
+                slab_init, slab_bulk, lattice, z_min, z_max \
+                        = read_slab(r_rearr, dual_surface, atype)
+                z_mean = (z_min+z_max)/2
+                nsite_bulk = len(slab_bulk)
+
+                # ---- consider only top and bulk atomic layer (ignore bottom)
+                if dual_surface:
+                    child = child.remove_sites([i for i, site in enumerate(child)
+                                                if i >= nsite_bulk and site.frac_coords[2] < z_mean])
+                # ---- permutation index
+                for a in atype:
+                    indx_each_type.append(
+                        [i for i, site in enumerate(child)
+                            if site.species_string == a and i >= nsite_bulk])
+            else:
+                for a in atype:
+                    indx_each_type.append(
+                        [i for i, site in enumerate(child)
+                            if site.species_string == a])
+            #for a in atype:
+            #    indx_each_type.append(
+            #        [i for i, site in enumerate(child)
+            #            if site.species_string == a])
+            #==============================================================="
+
             # ------ choose two atom type
             non_empty_indices = [i for i, sublist in enumerate(indx_each_type) if sublist]
             type_choice = np.random.choice(non_empty_indices, 2, replace=False)
@@ -138,11 +178,26 @@ def gen_child(atype, mindist, parent_A, ntimes=1, maxcnt_ea=50):
             indx_choice = []
             for tc in type_choice:
                 indx_choice.append(np.random.choice(indx_each_type[tc]))
+
             # ------ replace each other
-            child.replace(indx_choice[0],
-                                species=atype[type_choice[1]])
-            child.replace(indx_choice[1],
-                                species=atype[type_choice[0]])
+            #============== modified by KK =================================="
+            new_child = child.copy()
+            new_child.replace(
+                    indx_choice[0],
+                    species=child[indx_choice[0]].species_string,
+                    coords=child[indx_choice[1]].frac_coords
+            )
+            new_child.replace(
+                    indx_choice[1],
+                    species=child[indx_choice[1]].species_string,
+                    coords=child[indx_choice[0]].frac_coords
+            )
+            child = new_child
+            #child.replace(indx_choice[0],
+            #                    species=atype[type_choice[1]])
+            #child.replace(indx_choice[1],
+            #                    species=atype[type_choice[0]])
+            #==============================================================="
             # ------ compare to original one
             # if smatcher.fit(child, parent_A):
             #     n = ntimes    # back to the start
@@ -154,7 +209,15 @@ def gen_child(atype, mindist, parent_A, ntimes=1, maxcnt_ea=50):
         # ------ check distance
         success, mindist_ij, dist = check_distance(child, atype, mindist)
         if success:
-            child = sort_by_atype(child, atype)
+            #========= modified by KK =======#
+            if dual_surface:
+                child = symmetric_bottom(child, slab_bulk, symprec=symprec)
+            z_relax = r_relax/lattice.c
+            child = slab_site_properties(child, z_max-z_relax, z_min+z_relax)
+            if not slab:
+                child = sort_by_atype(child, atype)
+            #child = sort_by_atype(child, atype)
+            #================================#
             return child
         else:
             type0 = atype[mindist_ij[0]]
