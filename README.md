@@ -114,3 +114,45 @@ At least one optimizer is required.
 ## License
 CrySPY is distributed under the MIT License.  
 Copyright (c) 2018 CrySPY Development Team
+
+
+#==========================================================================================#
+# Cryspy - Slab Structure Exploration (Modified by KK, 2025)
+
+このバージョンのCryspyは、スラブ構造の探索に対応するよう改造してある。コード内の変更箇所には "modified by KK" や "added by KK" のコメントを付けてある。
+
+## 新しい入力パラメータ
+
+### `struc_mode`
+- `slab` モードを追加。
+- `struc_mode=slab` にすると、スラブ構造探索モードになる。
+
+### `r_relax` (float)
+- 最表面層から何Åの距離までの原子層を構造緩和させるかを決める (selective dynamicsが`T T T`)。
+
+### `r_rearr` (float)
+- 最表面層から何Åの距離までの原子層を再構成させるかを決める。
+- 再構成層は一度取り除かれ、ランダムに原子が配置される。
+- 原子数は `nat` で指定（任意の原子数を指定可能）。
+
+### `r_above` (float)
+- 最表面層から真空領域方向に何Åまでの範囲で原子をランダムに配置するかを決める。
+- 最終的に再構成層では、最表面層から真空側に `r_above`、バルク側に `r_rearr` の範囲で原子がランダムに配置される。
+
+### `dual_surface` (bool)
+- 両面を再構成層とみなすか（`True`）、片面のみとするか（`False`）を決める。
+- `True` の場合、バルク層の対称操作の中で 
+   `[[*,*, *],
+     [*,*, *],
+     [0,0,-1]]` 
+  を満たす回転・並進操作により片面の再構成層を逆側に再配置する。
+
+## VASPによる構造探索の設定
+
+`struc_mode=slab` を使う場合、`calc_in` ディレクトリに以下のファイルを置く必要がある:
+
+- `INCAR_1`
+- `KPOINTS`
+- `POSCAR_SLAB`
+- `POTCAR`
+- `run.sh`
