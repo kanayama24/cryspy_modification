@@ -147,7 +147,7 @@ Copyright (c) 2018 CrySPY Development Team
 ```
 [[*, *, *],
  [*, *, *],
- [0, 0, -1]
+ [0, 0, -1]]
 ```
 
 
