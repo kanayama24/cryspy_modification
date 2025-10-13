@@ -116,7 +116,8 @@ CrySPY is distributed under the MIT License.
 Copyright (c) 2018 CrySPY Development Team
 
 
-## Cryspy - Slab Structure Exploration (Modified by KK, 2025)
+#
+# Cryspy - Slab Structure Exploration (by KK, 2025)
 
 このバージョンのCryspyは、スラブ構造の探索に対応するよう改造してある。コード内の変更箇所には "modified by KK" や "added by KK" のコメントを付けてある。
 
