@@ -640,7 +640,7 @@ def symmetric_bottom(struc, slab_bulk, symprec):
     #print(rot)
     #print(len(struc.sites))
 
-    # 対照操作による新しい原子の追加
+    # 対称操作による新しい原子の追加
     nsite_bulk = len(slab_bulk)
     new_struc = struc.copy()
     for i, site in enumerate(struc.sites):
@@ -652,14 +652,20 @@ def symmetric_bottom(struc, slab_bulk, symprec):
     return new_struc
 
 
-def slab_site_properties(struc, z_fix_max=1, z_fix_min=0):
+def slab_site_properties(struc, dual_surface, z_fix_max=1, z_fix_min=0):
     slab_properties = []
     for site in struc.sites:
         fpos = site.frac_coords
-        if fpos[2] > z_fix_max or fpos[2] < z_fix_min:
-            slab_properties.append(np.array([True,True,True]))
+        if dual_surface:
+            if fpos[2] > z_fix_max or fpos[2] < z_fix_min:
+                slab_properties.append(np.array([True,True,True]))
+            else:
+                slab_properties.append(np.array([False,False,False]))
         else:
-            slab_properties.append(np.array([False,False,False]))
+            if fpos[2] > z_fix_max:
+                slab_properties.append(np.array([True,True,True]))
+            else:
+                slab_properties.append(np.array([False,False,False]))
     struc.add_site_property('selective_dynamics', slab_properties)
 
     return struc

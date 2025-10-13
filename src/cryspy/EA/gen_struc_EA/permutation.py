@@ -213,7 +213,7 @@ def gen_child(atype, mindist, parent_A, symprec, ntimes=1, maxcnt_ea=50,
             if dual_surface:
                 child = symmetric_bottom(child, slab_bulk, symprec=symprec)
             z_relax = r_relax/lattice.c
-            child = slab_site_properties(child, z_max-z_relax, z_min+z_relax)
+            child = slab_site_properties(child, dual_surface, z_max-z_relax, z_min+z_relax)
             if not slab:
                 child = sort_by_atype(child, atype)
             #child = sort_by_atype(child, atype)

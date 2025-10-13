@@ -217,7 +217,7 @@ def gen_child(atype, nat, mindist, parent_A, parent_B, symprec,
 
     # ---------- site properties (selective dynamics)
     z_relax = r_relax/lattice.c
-    child = slab_site_properties(child, z_max-z_relax, z_min+z_relax)
+    child = slab_site_properties(child, dual_surface, z_max-z_relax, z_min+z_relax)
 
     # ---------- return
     return child

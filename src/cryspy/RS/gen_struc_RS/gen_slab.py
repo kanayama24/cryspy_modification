@@ -81,7 +81,7 @@ def gen_slab_structure(
             tmp_struc = symmetric_bottom(tmp_struc, slab_bulk, symprec=symprec)
 
         # ---- site properties (selective dynamics)
-        tmp_struc = slab_site_properties(tmp_struc, z_max-z_relax, z_min+z_relax)
+        tmp_struc = slab_site_properties(tmp_struc, dual_surface, z_max-z_relax, z_min+z_relax)
 
         # ---- check actual space group
         try:
