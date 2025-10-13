@@ -48,8 +48,9 @@ def gen_crossover(
     nat_diff_tole (int): tolerance for nat_diff
     maxcnt_ea (int): maximum number of trial in crossover
     vc (bool): set True if algo == 'EA-vc'
-    ll_nat (tuple): lower limit of nat for EA-vc, e.g. (1, 1)
+    ll_nat (tuple): lower limit of nat for EA-vc, e.g. (0, 0)
     ul_nat (tuple): upper limit of nat for EA-vc, e.g. (8, 8)
+    cn_comb (numpy.ndarray): charge neutral combinations
 
     # ---------- return
     children (dict): {id: structure data}
@@ -76,7 +77,7 @@ def gen_crossover(
     # ---------- generate structures by crossover
     while struc_cnt < n_crsov:
         # ------ select parents
-        pid_A, pid_B = sp.get_parents(n_parent=2)
+        pid_A, pid_B = sp.get_parents(n_parent=2)    # get IDs
         parent_A = struc_data[pid_A]
         parent_B = struc_data[pid_B]
         # ------ generate child
@@ -85,9 +86,20 @@ def gen_crossover(
             #child, mol_id = co.gen_child_mol(rin, struc_data[pid_A], struc_data[pid_B],
             #                                    struc_mol_id[pid_A], struc_mol_id[pid_B])
         else:
-            child = gen_child(atype, nat, mindist, parent_A, parent_B,
-                              crs_lat, nat_diff_tole, maxcnt_ea,
-                              vc, ll_nat, ul_nat)
+            child = gen_child(
+                atype,
+                nat,
+                mindist,
+                parent_A,
+                parent_B,
+                crs_lat,
+                nat_diff_tole,
+                maxcnt_ea,
+                vc,
+                ll_nat,
+                ul_nat,
+                cn_comb,
+            )
         # ------ success
         if child is not None:
             children[cid] = child
@@ -100,7 +112,8 @@ def gen_crossover(
             except TypeError:
                 spg_num = 0
                 spg_sym = None
-            logger.info(f'Structure ID {cid:>6} was generated'
+            tmp_nat = get_nat(child, atype)
+            logger.info(f'Structure ID {cid:>6} {tmp_nat} was generated'
                     f' from {pid_A:>6} and {pid_B:>6} by crossover.'
                     f' Space group: {spg_num:>3} {spg_sym}')
             cid += 1
@@ -110,9 +123,20 @@ def gen_crossover(
     return children, parents, operation
 
 
-def gen_child(atype, nat, mindist, parent_A, parent_B,
-              crs_lat='random', nat_diff_tole=4, maxcnt_ea=50,
-              vc=False, ll_nat=None, ul_nat=None):
+def gen_child(
+        atype,
+        nat,
+        mindist,
+        parent_A,
+        parent_B,
+        crs_lat='random',
+        nat_diff_tole=4,
+        maxcnt_ea=50,
+        vc=False,
+        ll_nat=None,
+        ul_nat=None,
+        cn_comb=None,
+    ):
     '''
     # ---------- args
 
@@ -129,6 +153,7 @@ def gen_child(atype, nat, mindist, parent_A, parent_B,
     vc (bool): set True if algo == 'EA-vc'
     ll_nat (tuple): lower limit of nat for EA-vc, e.g. (1, 1)
     ul_nat (tuple): upper limit of nat for EA-vc, e.g. (8, 8)
+    cn_comb (numpy.ndarray): charge neutral combinations
 
     # ---------- return
     (if success) child (Structure): pymatgen Structure object
@@ -157,16 +182,21 @@ def gen_child(atype, nat, mindist, parent_A, parent_B,
         # ------ child structure
         child = Structure(lattice, species, coords)
         # ------ check nat_diff
-        if not vc:
-            nat_diff = _get_nat_diff(atype, nat, child)
-            if any([abs(n) > nat_diff_tole for n in nat_diff]):
-                logger.debug(f'nat_diff = {nat_diff}')
-                if count > maxcnt_ea:    # fail
-                    return None
-                continue    # slice again
-        else:    # EA-vc
-            nat_diff = [0, 0]    # dummy
+        # -- for charge neutral combinations
+        if vc and cn_comb is not None:
+            target_nat = _get_close_cn_comb(child, atype, cn_comb)
+            use_charge = True
+        else:
+            target_nat = nat
+            use_charge = False
+        nat_diff = _get_nat_diff(atype, target_nat, child, vc, ll_nat, ul_nat, use_charge)
+        if any([abs(n) > nat_diff_tole for n in nat_diff]):
+            logger.debug(f'nat_diff = {nat_diff}')
+            if count > maxcnt_ea:    # fail
+                return None
+            continue    # slice again
         # ------ check mindist
+        # either tmp_atype or atype is OK in check_distance()
         success, _, _ = check_distance(child, atype, mindist, check_all=False)
         # ------ something smaller than mindist
         if not success:
@@ -181,25 +211,17 @@ def gen_child(atype, nat, mindist, parent_A, parent_B,
                 if count > maxcnt_ea:
                     return None
                 continue    # fail --> slice again
-        if not vc:
-            # ------ recheck nat_diff
-            # ------ excess of atoms
-            nat_diff = _get_nat_diff(atype, nat, child)    # recheck
-            if any([n > 0 for n in nat_diff]):
-                child = _remove_border_line(child, atype, axis,
-                                            slice_point, nat_diff)
-            # ------ lack of atoms
-            nat_diff = _get_nat_diff(atype, nat, child)    # recheck
-            if any([n < 0 for n in nat_diff]):
-                child = _add_border_line(child, atype, mindist, axis, slice_point,
-                                         nat_diff, maxcnt_ea)
-        # ------ nat check for EA-vc
-        if vc:
-            child_nat, _ = get_nat(child, atype)
-            for i, na in enumerate(child_nat):
-                if not ll_nat[i] <= na <= ul_nat[i]:
-                    logger.warning(f'Crossover: nat = {nat}, ll_nat = {ll_nat}, ul_nat = {ul_nat}')
-                    child = None
+        # ------ recheck nat_diff
+        # ------ excess of atoms
+        nat_diff = _get_nat_diff(atype, target_nat, child, vc, ll_nat, ul_nat, use_charge)    # recheck
+        if any([n > 0 for n in nat_diff]):
+            child = _remove_border_line(child, atype, axis,
+                                        slice_point, nat_diff)
+        # ------ lack of atoms
+        nat_diff = _get_nat_diff(atype, target_nat, child, vc, ll_nat, ul_nat, use_charge)    # recheck
+        if any([n < 0 for n in nat_diff]):
+            child = _add_border_line(child, atype, mindist, axis, slice_point,
+                                        nat_diff, maxcnt_ea)
         # ------ success --> break while loop
         if child is not None:
             break
@@ -210,10 +232,9 @@ def gen_child(atype, nat, mindist, parent_A, parent_B,
             continue
 
     # ---------- final check for nat
-    if not vc:
-        nat_diff = _get_nat_diff(atype, nat, child)
-        if not all([n == 0 for n in nat_diff]):
-            return None    # failure
+    nat_diff = _get_nat_diff(atype, target_nat, child, vc, ll_nat, ul_nat, use_charge)
+    if not all([n == 0 for n in nat_diff]):
+        return None    # failure
 
     # ---------- sort by atype
     child = sort_by_atype(child, atype)
@@ -241,11 +262,8 @@ def _lattice_crossover(parent_A, parent_B, w_lat):
 
 
 def _one_point_crossover(parent_A, parent_B):
-    # ---------- slice point
-    while True:
-        slice_point = np.random.normal(loc=0.5, scale=0.1)
-        if 0.3 <= slice_point <= 0.7:
-            break
+    # ---------- slice point and axis
+    slice_point = np.clip(np.random.normal(loc=0.5, scale=0.1), 0.3, 0.7)
     axis = np.random.choice([0, 1, 2])
 
     # ---------- crossover
@@ -287,16 +305,40 @@ def _one_point_crossover(parent_A, parent_B):
     return axis, slice_point, species, coords
 
 
-def _get_nat_diff(atype, nat, child):
+def _get_nat_diff(atype, target_nat, child, vc, ll_nat, ul_nat, use_charge):
     '''
-    original nat - child nat
-    e.g.
-        nat = [4, 4]        # original
-        tmp_nat = [3, 5]    # child
-        nat_diff = [-1, 1]
+    if not vc:
+        original nat - child nat
+        e.g.
+            target_nat = [4, 4]        # original
+            tmp_nat = [3, 5]    # child
+            nat_diff = [-1, 1]
+    if vc:
+        e.g.
+            ll_nat = [4, 4, 4]
+            ul_nat = [8, 8, 8]
+            tmp_nat = [2, 6, 12]    # child
+            nat_diff = [-2, 0, 4]
+    if vc and cn_comb is not None:
+        target nat - child nat
+        e.g.
+            target_nat = [4, 4]    # closest nat in charge neutral combinations
+            tmp_nat = [3, 5]    # child
+            nat_diff = [-1, 1]
+        e.g.
     '''
-    tmp_nat, _ = get_nat(child, atype)
-    nat_diff = [i - j for i, j in zip(tmp_nat, nat)]
+    tmp_nat = get_nat(child, atype)
+    if not vc or use_charge:
+        nat_diff = [i - j for i, j in zip(tmp_nat, target_nat)]
+    else:
+        nat_diff = []
+        for i, n in enumerate(tmp_nat):
+            if n > ul_nat[i]:
+                nat_diff.append(n - ul_nat[i])
+            elif n < ll_nat[i]:
+                nat_diff.append(n - ll_nat[i])
+            else:
+                nat_diff.append(0)
     return nat_diff
 
 
@@ -418,3 +460,20 @@ def _mean_choice(child, axis, slice_point):
     else:
         mean = np.random.choice([0.0, slice_point])
     return mean
+
+
+def _get_close_cn_comb(child, atype, cn_comb):
+    # ---------- distance between child and cn_comb
+    tmp_nat = get_nat(child, atype)
+    distances = np.sum(np.abs(cn_comb - tmp_nat), axis=1)
+
+    # ---------- find the closest combination
+    min_distance = np.min(distances)
+    min_indices = np.where(distances == min_distance)[0]
+    
+    # ---------- randomly select one of the closest combinations
+    closest_idx = np.random.choice(min_indices)
+    cn_target_nat = cn_comb[closest_idx]
+
+    # ---------- return
+    return cn_target_nat

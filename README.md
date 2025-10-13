@@ -9,9 +9,11 @@ Document: https://tomoki-yamashita.github.io/CrySPY_doc
 Questions and comments: https://github.com/Tomoki-YAMASHITA/CrySPY/discussions
 
 ## Latest version
-version 1.4.2 (2025 July 18)
+version 1.4.3 (2025 October 6)
 
 ## News
+- [2025 Octorber 6] CrySPY 1.4.3 released.
+    + Bug fix in EA-vc
 - [2025 July 18] CrySPY 1.4.2 released.
     + Supports VASP and QE for EA-vc
     + Priority order of structure optimization input file names
@@ -115,11 +117,11 @@ At least one optimizer is required.
 CrySPY is distributed under the MIT License.  
 Copyright (c) 2018 CrySPY Development Team
 
-
 #
 # Cryspy - Slab Structure Exploration (by KK, 2025)
 
-本バージョンのCryspyは、スラブ構造の探索に対応するよう改良されている。コード内の変更箇所には "modified by KK" または "added by KK" のコメントが付されている。
+本バージョンのCryspyは、スラブ構造の探索に対応するよう改良されている。コード内の変更箇所には "modified by KK" または "added by KK" のコメントが付
+されている。
 
 ## 拡張された入力パラメータ
 
@@ -163,4 +165,3 @@ Copyright (c) 2018 CrySPY Development Team
 - `run.sh`
 
 これらのファイルは、計算条件、k点サンプリング、スラブ構造、擬ポテンシャル、および実行スクリプトを定義する。
-
