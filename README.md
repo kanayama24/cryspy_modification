@@ -144,9 +144,11 @@ Copyright (c) 2018 CrySPY Development Team
 - `dual_surface=True` の場合、バルク構造が有する対称操作に基づき、片面の再構成層をもう一方に再配置する。
 - 対称操作は以下のような行列で表される。ここで `*` は任意の値を示す：
 
-A=\left[
-\begin{matrix} \* & \* & \* \\ \* & \* & \* \\ 0 & 0 & -1 \end{matrix}
- \right]
+\begin{pmatrix} 
+\* & \* & \* \\ 
+\* & \* & \* \\ 
+0 & 0 & -1 
+\end{pmatrix}
 ```
 ```
 
