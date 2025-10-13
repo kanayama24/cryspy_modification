@@ -146,7 +146,7 @@ Copyright (c) 2018 CrySPY Development Team
 
 ```
 \left[
-\begin{matrix} * & * & * \\ * & * & * \\ 0 0 -1 \end{matrix}
+\begin{matrix} \* & \* & \* \\ \* & \* & \* \\ 0 & 0 & -1 \end{matrix}
  \right]
 ```
 
