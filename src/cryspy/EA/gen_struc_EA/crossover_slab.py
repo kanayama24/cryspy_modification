@@ -160,10 +160,10 @@ def gen_child(atype, nat, mindist, parent_A, parent_B, symprec,
     while True:
         count += 1
         # ------ coordinate crossover
-        axis, slice_point, species, coords = _one_point_crossover(parent_A_rearr, parent_B_rearr)
+        axis, slice_point, child_rearr_species, child_rearr_coords = _one_point_crossover(parent_A_rearr, parent_B_rearr)
         # ------ child structure
-        child_rearr = Structure(lattice, species, coords)
-        child = Structure(lattice, bulk_species+child_rearr.species, bulk_coords+child_rearr.frac_coords)
+        child_rearr = Structure(lattice, child_rearr_species, child_rearr_coords)
+        child = Structure(lattice, bulk_species+child_rearr_species, bulk_coords+child_rearr_coords)
         # ------ check nat_diff
         nat_diff = _get_nat_diff(atype, nat, child_rearr)
         if any([abs(n) > nat_diff_tole for n in nat_diff]):
@@ -188,18 +188,18 @@ def gen_child(atype, nat, mindist, parent_A, parent_B, symprec,
                 continue    # fail --> slice again
         # ------ recheck nat_diff
         # ------ excess of atoms
-        child_rearr = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
+        child_rearr, child_rearr_species, child_rearr_coords = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
         nat_diff = _get_nat_diff(atype, nat, child_rearr)    # recheck
         if any([n > 0 for n in nat_diff]):
             child = _remove_border_line(child, atype, axis,
                                         slice_point, nat_diff, nsite_bulk)
         # ------ lack of atoms
-        child_rearr = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
+        child_rearr, child_rearr_species, child_rearr_coords = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
         nat_diff = _get_nat_diff(atype, nat, child_rearr)    # recheck
         if any([n < 0 for n in nat_diff]):
             child = _add_border_line(child, atype, mindist, axis, slice_point,
                                      nat_diff, nsite_bulk, maxcnt_ea)
-            child_rearr = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
+            child_rearr, child_rearr_species, child_rearr_coords = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
         # ------ success --> break while loop
         if child is not None:
             break
@@ -210,11 +210,11 @@ def gen_child(atype, nat, mindist, parent_A, parent_B, symprec,
             continue
 
     # ---------- final check for nat
-    child_rearr = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
+    child_rearr, child_rearr_species, child_rearr_coords = _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype)
     nat_diff = _get_nat_diff(atype, nat, child_rearr)
     if not all([n == 0 for n in nat_diff]):
         return None    # failure
-    child = Structure(lattice, bulk_species+child_rearr.species, bulk_coords+child_rearr.frac_coords)
+    child = Structure(lattice, bulk_species+child_rearr_species, bulk_coords+child_rearr_coords)
 
     # ---------- put atoms on bottom layer within symmetry
     if dual_surface:
@@ -278,14 +278,16 @@ def _one_point_crossover(parent_A, parent_B):
 
 def _get_child_rearr(child, lattice, nsite_bulk, z_mean, atype):
     child_rearr_sites = child.sites[nsite_bulk:]
-    child_rearar_ = Structure(
+    child_rearr = Structure(
         lattice=lattice,
         species=[site.species_string for site in child_rearr_sites if site.frac_coords[2]>z_mean],
         coords=[site.frac_coords for site in child_rearr_sites if site.frac_coords[2]>z_mean],
         coords_are_cartesian=False
     )
     child_rearr = sort_by_atype(child_rearr, atype)
-    return child_rearr
+    child_rearr_species = [site.species_string for site in child_rearr.sites]
+    child_rearr_coords = [site.frac_coords for site in child_rearr.sites]
+    return child_rearr, child_rearr_species, child_rearr_coords
 
 
 def _get_nat_diff(atype, nat, child):
